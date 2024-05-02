@@ -1,6 +1,6 @@
 import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 import abi_market from "./abi/abi.sta_market.json"
-import abi_weapon from "./abi/starmechweapon.json"
+import abi_weapon from "./abi/abi.starmechweapon.json"
 
 /**
  * @example
