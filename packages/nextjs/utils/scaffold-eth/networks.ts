@@ -107,6 +107,14 @@ export const NETWORKS_EXTRA_DATA: Record<string, ChainAttributes> = {
     etherscanApiKey: SCROLL_ETHERSCAN_API_KEY,
     icon: "/scroll.svg",
   },
+  [chains.avalanche.id]: {
+    color: "#E84142",
+    icon: "/avax.jpg",
+  },
+  [chains.avalancheFuji.id]: {
+    color: "#E84142",
+    icon: "/avax.jpg",
+  },
 };
 
 /**
