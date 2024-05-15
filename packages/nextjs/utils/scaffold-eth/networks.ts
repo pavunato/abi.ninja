@@ -115,6 +115,14 @@ export const NETWORKS_EXTRA_DATA: Record<string, ChainAttributes> = {
     color: "#E84142",
     icon: "/avax.jpg",
   },
+  [chains.bsc.id]: {
+    color: "#F0B90B",
+    icon: "/bnb.svg",
+  },
+  [chains.bscTestnet.id]: {
+    color: "#F0B90B",
+    icon: "/bnb.svg",
+  },
 };
 
 /**
