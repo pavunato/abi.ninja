@@ -5,7 +5,7 @@ import { useRouter } from "next/router";
 import type { NextPage } from "next";
 import { Address, isAddress } from "viem";
 import { usePublicClient } from "wagmi";
-import { ChevronLeftIcon, MagnifyingGlassIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { BackspaceIcon, ChevronLeftIcon, MagnifyingGlassIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { MetaHeader } from "~~/components/MetaHeader";
 import { MiniFooter } from "~~/components/MiniFooter";
 import { NetworksDropdown } from "~~/components/NetworksDropdown";
@@ -139,7 +139,10 @@ const Home: NextPage = () => {
         localStorage.removeItem(localStorage.key(i) as string);
       }
     }
-    setRecentlyContracts([]);
+  };
+
+  const removeOneRecently = (localStorageKey: string) => {
+    localStorage.removeItem(localStorageKey);
   };
 
   const handleUserProvidedAbi = () => {
@@ -309,29 +312,34 @@ const Home: NextPage = () => {
         </div>
 
         {activeTab === TabName.verifiedContract && recentlyContracts.length > 0 && (
-          <div className="flex h-screen relative overflow-x-hidden w-full flex-col items-center justify-center rounded-2xl bg-white pb-4 lg:h-[650px] lg:w-[450px] lg:justify-between lg:shadow-xl">
+          <div className="flex h-screen relative overflow-x-hidden w-full flex-col items-center rounded-2xl bg-white pb-4 lg:h-[650px] lg:w-[450px] lg:shadow-xl">
+            <div className="my-2 text-center font-semibold">Recently Contracts</div>
             <button
-              className="btn btn-ghost absolute right-4 px-2 btn-primary"
+              className="btn btn-ghost h-10 min-h-10 absolute right-4 px-2 btn-primary"
               onClick={() => {
                 handleClearRecently();
               }}
             >
-              Clear
+              Clear all
               <TrashIcon className="h-4 w-4" />
             </button>
-            <div className="my-4 flex flex-col items-center justify-center">
-              <div className="mb-2 text-center font-semibold">Recently Contracts</div>
+            <div className="my-4 flex flex-col w-[80%]">
               {recentlyContracts.map(contract => {
                 const [, network, address] = contract.split("_");
                 return (
-                  <Link
-                    href={`/${address}/${network}`}
-                    passHref
-                    key={contract}
-                    className="link text-center text-purple-700 no-underline"
-                  >
-                    {`${addressSortenned(address)} (${network})`}
-                  </Link>
+                  <div className="flex justify-between items-center" key={contract}>
+                    <Link href={`/${address}/${network}`} passHref className="link text-purple-700 no-underline">
+                      {`${addressSortenned(address)} (${network})`}
+                    </Link>
+                    <button
+                      className="btn btn-ghost h-8 min-h-8"
+                      onClick={() => {
+                        removeOneRecently(contract);
+                      }}
+                    >
+                      <BackspaceIcon className="h-4 w-4" />
+                    </button>
+                  </div>
                 );
               })}
             </div>
