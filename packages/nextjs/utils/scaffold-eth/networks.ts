@@ -72,6 +72,12 @@ export const NETWORKS_EXTRA_DATA: Record<string, ChainAttributes> = {
     etherscanApiKey: ARBITRUM_ETHERSCAN_API_KEY,
     icon: "/arbitrum.svg",
   },
+  [chains.arbitrumSepolia.id]: {
+    color: "#28a0f0",
+    etherscanEndpoint: "https://api.arbiscan.io",
+    etherscanApiKey: ARBITRUM_ETHERSCAN_API_KEY,
+    icon: "/arbitrum.svg",
+  },
   [chains.zkSync.id]: {
     color: "#5f4bb6",
     etherscanEndpoint: "https://block-explorer-api.mainnet.zksync.io",
