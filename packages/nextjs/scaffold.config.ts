@@ -1,4 +1,35 @@
+import { defineChain } from "viem";
 import * as chains from "viem/chains";
+
+export const sei = defineChain({
+  id: 1329,
+  name: "Sei",
+  network: "sei",
+  nativeCurrency: {
+    decimals: 18,
+    name: "Sei",
+    symbol: "SEI",
+  },
+  rpcUrls: {
+    default: {
+      http: ["https://evm-rpc.sei-apis.com"],
+      webSocket: ["wss://evm-ws-arctic-1.sei-apis.com"],
+    },
+    public: {
+      http: ["https://evm-rpc.sei-apis.com"],
+      webSocket: ["wss://evm-ws-arctic-1.sei-apis.com"],
+    },
+  },
+  blockExplorers: {
+    default: { name: "SeiTrace", url: "https://seitrace.com" },
+  },
+  contracts: {
+    multicall3: {
+      address: "0xcA11bde05977b3631167028862bE2a173976CA11",
+      blockCreated: 79351444,
+    },
+  },
+});
 
 export type ScaffoldConfig = {
   targetNetworks: readonly chains.Chain[];
@@ -20,6 +51,7 @@ const scaffoldConfig = {
     chains.bsc,
     chains.base,
     chains.baseSepolia,
+    sei,
   ],
 
   // The interval at which your front-end polls the RPC servers for new data

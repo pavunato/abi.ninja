@@ -1,5 +1,5 @@
 import * as chains from "viem/chains";
-import scaffoldConfig from "~~/scaffold.config";
+import scaffoldConfig, { sei } from "~~/scaffold.config";
 
 type ChainAttributes = {
   // color | [lightThemeColor, darkThemeColor]
@@ -128,6 +128,10 @@ export const NETWORKS_EXTRA_DATA: Record<string, ChainAttributes> = {
   [chains.bscTestnet.id]: {
     color: "#F0B90B",
     icon: "/bnb.svg",
+  },
+  [sei.id]: {
+    color: "#a5020e",
+    icon: "/sei.png",
   },
 };
 
