@@ -133,6 +133,10 @@ export const NETWORKS_EXTRA_DATA: Record<string, ChainAttributes> = {
     color: "#a5020e",
     icon: "/sei.png",
   },
+  [chains.optimismSepolia.id]: {
+    color: "#f01a37",
+    icon: "/optimism.svg",
+  },
 };
 
 /**

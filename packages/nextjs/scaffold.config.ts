@@ -45,6 +45,8 @@ const scaffoldConfig = {
   targetNetworks: [
     chains.avalanche,
     chains.avalancheFuji,
+    chains.optimism,
+    chains.optimismSepolia,
     chains.arbitrum,
     chains.arbitrumSepolia,
     chains.bscTestnet,
