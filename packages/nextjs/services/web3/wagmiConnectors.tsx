@@ -11,9 +11,11 @@ import {
 import * as chains from "viem/chains";
 import { configureChains } from "wagmi";
 import { alchemyProvider } from "wagmi/providers/alchemy";
+import { jsonRpcProvider } from "wagmi/providers/jsonRpc";
 import { publicProvider } from "wagmi/providers/public";
 import scaffoldConfig from "~~/scaffold.config";
 import { burnerWalletConfig } from "~~/services/web3/wagmi-burner/burnerWalletConfig";
+import { getCustomRpc } from "~~/utils/rpc";
 import { getTargetNetworks } from "~~/utils/scaffold-eth";
 
 const targetNetworks = getTargetNetworks();
@@ -30,6 +32,35 @@ const enabledChains = targetNetworks.find(network => network.id === 1)
 export const appChains = configureChains(
   enabledChains,
   [
+    // Prefer explicit RPCs for BSC networks; fall back to defaults otherwise
+    jsonRpcProvider({
+      rpc: chain => {
+        // 1) If user provided a custom RPC for this chain, use it
+        const customRpc = getCustomRpc(chain.id);
+        if (customRpc) {
+          return { http: customRpc };
+        }
+
+        // 2) Network-specific defaults (e.g. BSC)
+        if (chain.id === chains.bsc.id) {
+          return {
+            http:
+              process.env.NEXT_PUBLIC_RPC_BSC ||
+              // Default public RPC
+              "https://bsc-dataseed1.binance.org",
+          };
+        }
+        if (chain.id === chains.bscTestnet.id) {
+          return {
+            http:
+              process.env.NEXT_PUBLIC_RPC_BSC_TESTNET ||
+              // Default public RPC
+              "https://data-seed-prebsc-1-s1.binance.org:8545",
+          };
+        }
+        return null;
+      },
+    }),
     alchemyProvider({
       apiKey: scaffoldConfig.alchemyApiKey,
     }),

@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import NetworkRpcModal from "./NetworkRpcModal";
 import Select, { OptionProps, components } from "react-select";
+import { Cog6ToothIcon } from "@heroicons/react/24/outline";
 import { getTargetNetworks } from "~~/utils/scaffold-eth";
 
 type Options = {
@@ -58,6 +60,11 @@ const IconOption = (props: OptionProps<Options>) => (
 
 export const NetworksDropdown = ({ onChange }: { onChange: (options: any) => any }) => {
   const [isMobile, setIsMobile] = useState(false);
+  const defaultOption = groupedOptions["mainnet"].options[0] ?? Object.values(groupedOptions)[0]?.options[0];
+  const [selected, setSelected] = useState<Options | null>(defaultOption ?? null);
+  const [showRpcModal, setShowRpcModal] = useState(false);
+  const selectedChain = useMemo(() => networks.find(n => n.id === selected?.value), [selected?.value]);
+  const defaultRpc = useMemo(() => selectedChain?.rpcUrls?.default?.http?.[0] ?? "", [selectedChain]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -70,27 +77,55 @@ export const NetworksDropdown = ({ onChange }: { onChange: (options: any) => any
     }
   }, []);
 
+  // no-op
+
   return (
-    <Select
-      defaultValue={groupedOptions["mainnet"].options[0]}
-      instanceId="network-select"
-      options={Object.values(groupedOptions)}
-      onChange={onChange}
-      components={{ Option: IconOption }}
-      isSearchable={!isMobile}
-      className="max-w-xs bg-white relative text-sm w-44"
-      theme={theme => ({
-        ...theme,
-        colors: {
-          ...theme.colors,
-          primary25: "#efeaff",
-          primary50: "#c1aeff",
-          primary: "#551d98",
-        },
-      })}
-      styles={{
-        menuList: provided => ({ ...provided, maxHeight: 280, overflow: "auto" }),
-      }}
-    />
+    <div className="flex items-center gap-2">
+      <Select
+        defaultValue={defaultOption}
+        value={selected as any}
+        instanceId="network-select"
+        options={Object.values(groupedOptions)}
+        onChange={option => {
+          setSelected(option as Options);
+          onChange(option);
+        }}
+        components={{ Option: IconOption }}
+        isSearchable={!isMobile}
+        className="max-w-xs bg-white relative text-sm w-44"
+        theme={theme => ({
+          ...theme,
+          colors: {
+            ...theme.colors,
+            primary25: "#efeaff",
+            primary50: "#c1aeff",
+            primary: "#551d98",
+          },
+        })}
+        styles={{
+          menuList: provided => ({ ...provided, maxHeight: 280, overflow: "auto" }),
+        }}
+      />
+
+      <button
+        type="button"
+        title="Change RPC"
+        className="btn btn-ghost btn-md h-4 min-h-4"
+        onClick={() => setShowRpcModal(true)}
+        disabled={!selected}
+      >
+        <Cog6ToothIcon className="h-5 w-5" />
+      </button>
+
+      {showRpcModal && selected && (
+        <NetworkRpcModal
+          isOpen={showRpcModal}
+          chainId={selected.value}
+          chainLabel={selected.label}
+          defaultRpc={defaultRpc}
+          onClose={() => setShowRpcModal(false)}
+        />
+      )}
+    </div>
   );
 };

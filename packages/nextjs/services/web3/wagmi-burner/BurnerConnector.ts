@@ -5,6 +5,7 @@ import { Connector } from "wagmi";
 import { loadBurnerSK } from "~~/hooks/scaffold-eth";
 import { BurnerConnectorError, BurnerConnectorErrorList } from "~~/services/web3/wagmi-burner/BurnerConnectorErrors";
 import { BurnerConnectorData, BurnerConnectorOptions } from "~~/services/web3/wagmi-burner/BurnerConnectorTypes";
+import { getCustomRpc } from "~~/utils/rpc";
 
 export const burnerWalletId = "burner-wallet";
 export const burnerWalletName = "Burner Wallet";
@@ -31,7 +32,9 @@ export class BurnerConnector extends Connector<StaticJsonRpcProvider, BurnerConn
   async getProvider() {
     if (!this.provider) {
       const chain = this.getChainFromId();
-      this.provider = new StaticJsonRpcProvider(chain.rpcUrls.default.http[0]);
+      const customRpc = typeof window !== "undefined" ? getCustomRpc(chain.id) : null;
+      const url = customRpc || chain.rpcUrls.default.http[0];
+      this.provider = new StaticJsonRpcProvider(url);
     }
     return this.provider;
   }
@@ -53,8 +56,9 @@ export class BurnerConnector extends Connector<StaticJsonRpcProvider, BurnerConn
 
   async connect(config?: { chainId?: number | undefined } | undefined): Promise<Required<BurnerConnectorData>> {
     const chain = this.getChainFromId(config?.chainId);
-
-    this.provider = new StaticJsonRpcProvider(chain.rpcUrls.default.http[0]);
+    const customRpc = typeof window !== "undefined" ? getCustomRpc(chain.id) : null;
+    const url = customRpc || chain.rpcUrls.default.http[0];
+    this.provider = new StaticJsonRpcProvider(url);
     const account = await this.getAccount();
 
     if (this.provider == null || account == null) {
@@ -130,7 +134,9 @@ export class BurnerConnector extends Connector<StaticJsonRpcProvider, BurnerConn
 
   async switchChain(chainId: number) {
     const chain = this.getChainFromId(chainId);
-    this.provider = new StaticJsonRpcProvider(chain.rpcUrls.default.http[0]);
+    const customRpc = typeof window !== "undefined" ? getCustomRpc(chain.id) : null;
+    const url = customRpc || chain.rpcUrls.default.http[0];
+    this.provider = new StaticJsonRpcProvider(url);
 
     await this.onChainChanged();
     return chain;

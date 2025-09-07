@@ -5,7 +5,14 @@ import { useRouter } from "next/router";
 import type { NextPage } from "next";
 import { Address, isAddress } from "viem";
 import { usePublicClient } from "wagmi";
-import { BackspaceIcon, ChevronLeftIcon, MagnifyingGlassIcon, TrashIcon } from "@heroicons/react/24/outline";
+import {
+  BackspaceIcon,
+  ChevronLeftIcon,
+  MagnifyingGlassIcon,
+  PencilSquareIcon,
+  TrashIcon,
+} from "@heroicons/react/24/outline";
+import ContractNameModal from "~~/components/ContractNameModal";
 import { MetaHeader } from "~~/components/MetaHeader";
 import { MiniFooter } from "~~/components/MiniFooter";
 import { NetworksDropdown } from "~~/components/NetworksDropdown";
@@ -13,6 +20,7 @@ import { AddressInput } from "~~/components/scaffold-eth";
 import { useAbiNinjaState } from "~~/services/store/store";
 import { fetchContractABIFromAnyABI, fetchContractABIFromEtherscan, parseAndCorrectJSON } from "~~/utils/abi";
 import { detectProxyTarget } from "~~/utils/abi-ninja/proxyContracts";
+import { clearContractName, getContractName, parseContractDataKey } from "~~/utils/recently";
 import { getTargetNetworks, notification } from "~~/utils/scaffold-eth";
 
 enum TabName {
@@ -32,6 +40,8 @@ const Home: NextPage = () => {
   const [localContractAbi, setLocalContractAbi] = useState("");
   const [isFetchingAbi, setIsFetchingAbi] = useState(false);
   const [recentlyContracts, setRecentlyContracts] = useState<string[]>([]);
+  const [recentlyNames, setRecentlyNames] = useState<Record<string, string | null>>({});
+  const [nameModalKey, setNameModalKey] = useState<string | null>(null);
 
   const publicClient = usePublicClient({
     chainId: parseInt(network),
@@ -48,13 +58,18 @@ const Home: NextPage = () => {
   const router = useRouter();
 
   useEffect(() => {
-    const arr = []; // Array to hold the keys
+    const arr: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
-      if (localStorage.key(i)?.startsWith("contractData")) {
-        arr.push(localStorage.key(i) as string);
-      }
+      const k = localStorage.key(i);
+      if (k?.startsWith("contractData")) arr.push(k);
     }
     setRecentlyContracts(arr);
+    const names: Record<string, string | null> = {};
+    for (const key of arr) {
+      const parsed = parseContractDataKey(key);
+      if (parsed) names[key] = getContractName(parsed.network, parsed.address);
+    }
+    setRecentlyNames(names);
   }, []);
 
   useEffect(() => {
@@ -135,14 +150,29 @@ const Home: NextPage = () => {
 
   const handleClearRecently = () => {
     for (let i = 0; i < localStorage.length; i++) {
-      if (localStorage.key(i)?.startsWith("contractData")) {
-        localStorage.removeItem(localStorage.key(i) as string);
+      const k = localStorage.key(i);
+      if (k?.startsWith("contractData")) {
+        localStorage.removeItem(k);
       }
     }
+    for (const key of recentlyContracts) {
+      const parsed = parseContractDataKey(key);
+      if (parsed) clearContractName(parsed.network, parsed.address);
+    }
+    setRecentlyContracts([]);
+    setRecentlyNames({});
   };
 
   const removeOneRecently = (localStorageKey: string) => {
     localStorage.removeItem(localStorageKey);
+    const parsed = parseContractDataKey(localStorageKey);
+    if (parsed) clearContractName(parsed.network, parsed.address);
+    setRecentlyContracts(prev => prev.filter(k => k !== localStorageKey));
+    setRecentlyNames(prev => {
+      const next = { ...prev };
+      delete next[localStorageKey];
+      return next;
+    });
   };
 
   const handleUserProvidedAbi = () => {
@@ -312,10 +342,10 @@ const Home: NextPage = () => {
         </div>
 
         {activeTab === TabName.verifiedContract && recentlyContracts.length > 0 && (
-          <div className="flex h-screen relative overflow-x-hidden w-full flex-col items-center rounded-2xl bg-white pb-4 lg:h-[650px] lg:w-[450px] lg:shadow-xl">
+          <div className="flex h-screen relative overflow-x-hidden w-full flex-col items-center rounded-2xl bg-white py-4 lg:h-[650px] lg:w-[450px] lg:shadow-xl">
             <div className="my-2 text-center font-semibold">Recently Contracts</div>
             <button
-              className="btn btn-ghost h-10 min-h-10 absolute right-4 px-2 btn-primary"
+              className="btn btn-ghost btn-sm h-10 min-h-10 absolute right-4 btn-primary"
               onClick={() => {
                 handleClearRecently();
               }}
@@ -327,24 +357,53 @@ const Home: NextPage = () => {
               {recentlyContracts.map(contract => {
                 const [, network, address] = contract.split("_");
                 return (
-                  <div className="flex justify-between items-center" key={contract}>
+                  <div className="flex justify-between items-center gap-2" key={contract}>
                     <Link href={`/${address}/${network}`} passHref className="link text-purple-700 no-underline">
-                      {`${addressSortenned(address)} (${network})`}
+                      {(recentlyNames[contract] || addressSortenned(address)) + ` (${network})`}
                     </Link>
-                    <button
-                      className="btn btn-ghost h-8 min-h-8"
-                      onClick={() => {
-                        removeOneRecently(contract);
-                      }}
-                    >
-                      <BackspaceIcon className="h-4 w-4" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        title="Set name"
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => setNameModalKey(contract)}
+                      >
+                        <PencilSquareIcon className="h-5 w-5" />
+                      </button>
+                      <button
+                        type="button"
+                        title="Remove"
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => removeOneRecently(contract)}
+                      >
+                        <BackspaceIcon className="h-5 w-5" />
+                      </button>
+                    </div>
                   </div>
                 );
               })}
             </div>
           </div>
         )}
+        {nameModalKey &&
+          (() => {
+            const parsed = parseContractDataKey(nameModalKey);
+            if (!parsed) return null;
+            return (
+              <ContractNameModal
+                isOpen={true}
+                network={parsed.network}
+                address={parsed.address}
+                onClose={() => setNameModalKey(null)}
+                onSaved={newName =>
+                  setRecentlyNames(prev => ({
+                    ...prev,
+                    [nameModalKey]: newName ?? null,
+                  }))
+                }
+              />
+            );
+          })()}
       </div>
     </>
   );

@@ -10,6 +10,7 @@ import { MiniFooter } from "~~/components/MiniFooter";
 import { Address, Balance, MethodSelector } from "~~/components/scaffold-eth";
 import { useNetworkColor } from "~~/hooks/scaffold-eth";
 import { useAbiNinjaState } from "~~/services/store/store";
+import { getContractName } from "~~/utils/recently";
 import { getTargetNetworks } from "~~/utils/scaffold-eth";
 
 type ContractUIProps = {
@@ -139,6 +140,20 @@ export const ContractUI = ({ className = "", initialContractData }: ContractUIPr
     return "Contract";
   }, [isContractNameLoading, contractNameData]);
 
+  const userProvidedName = useMemo(() => {
+    try {
+      if (typeof window === "undefined") return null;
+      return getContractName(chainId ?? "", initialContractData.address);
+    } catch {
+      return null;
+    }
+  }, [chainId, initialContractData.address]);
+
+  const overviewTitle = useMemo(() => {
+    const base = userProvidedName || displayContractName;
+    return `${base} Overview`;
+  }, [userProvidedName, displayContractName]);
+
   return (
     <div className="drawer sm:drawer-open h-full">
       <input id="sidebar" type="checkbox" className="drawer-toggle" />
@@ -195,9 +210,9 @@ export const ContractUI = ({ className = "", initialContractData }: ContractUIPr
               <div className="bg-white border shadow-xl rounded-2xl px-6 mb-6 space-y-1 py-4">
                 <div className="flex">
                   <div className="flex flex-col gap-1">
-                    <span className="font-bold pb-2">Contract Overview</span>
+                    <span className="font-bold pb-2">{overviewTitle}</span>
                     <div className="flex pb-1">
-                      <span className="font-medium text-base mr-4"> {displayContractName} </span>
+                      <span className="font-medium text-base mr-4"> {userProvidedName || displayContractName} </span>
                       <Address address={initialContractData.address} />
                     </div>
                     {implementationAddress && (
