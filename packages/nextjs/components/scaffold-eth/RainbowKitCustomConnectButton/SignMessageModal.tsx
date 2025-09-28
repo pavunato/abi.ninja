@@ -28,8 +28,8 @@ export const SignMessageModal = ({ modalId }: SignMessageModalProps) => {
   };
 
   useEffect(() => {
-    if (signature) setSignature("");
-  }, [message, signature]);
+    setSignature("");
+  }, [message]);
 
   return (
     <>
