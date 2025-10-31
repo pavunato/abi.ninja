@@ -11,6 +11,12 @@ type ChainAttributes = {
   etherscanApiKey?: string;
   icon?: string;
   groupSelector?: string;
+  blockExplorers?: {
+    default: {
+      name: string;
+      url: string;
+    };
+  };
 };
 
 export type ChainWithAttributes = chains.Chain & Partial<ChainAttributes>;
@@ -74,9 +80,15 @@ export const NETWORKS_EXTRA_DATA: Record<string, ChainAttributes> = {
   },
   [chains.arbitrumSepolia.id]: {
     color: "#28a0f0",
-    etherscanEndpoint: "https://api.arbiscan.io",
+    etherscanEndpoint: "https://api-sepolia.arbiscan.io",
     etherscanApiKey: ARBITRUM_ETHERSCAN_API_KEY,
     icon: "/arbitrum.svg",
+    blockExplorers: {
+      default: {
+        name: "Arbiscan",
+        url: "https://sepolia.arbiscan.io",
+      },
+    },
   },
   [chains.zkSync.id]: {
     color: "#5f4bb6",
@@ -171,7 +183,9 @@ export function getBlockExplorerTxLink(chainId: number, txnHash: string) {
  * Defaults to Etherscan if no (wagmi) block explorer is configured for the network.
  */
 export function getBlockExplorerAddressLink(network: chains.Chain, address: string) {
-  const blockExplorerBaseURL = network.blockExplorers?.default?.url;
+  // Check if we have custom block explorer in NETWORKS_EXTRA_DATA
+  const customBlockExplorer = NETWORKS_EXTRA_DATA[network.id]?.blockExplorers?.default?.url;
+  const blockExplorerBaseURL = customBlockExplorer || network.blockExplorers?.default?.url;
   if (network.id === chains.hardhat.id) {
     return `/blockexplorer/address/${address}`;
   }
