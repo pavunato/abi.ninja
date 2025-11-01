@@ -36,6 +36,7 @@ export type ScaffoldConfig = {
   pollingInterval: number;
   alchemyApiKey: string;
   walletConnectProjectId: string;
+  etherscanApiKey: string;
   onlyLocalBurnerWallet: boolean;
   walletAutoConnect: boolean;
 };
@@ -71,6 +72,12 @@ const scaffoldConfig = {
   // It's recommended to store it in an env variable:
   // .env.local for local testing, and in the Vercel/system env config for live apps.
   walletConnectProjectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || "3a8170812b534d0ff9d794f19a901d64",
+
+  // This is ours Etherscan's default API key.
+  // You can get your own at https://etherscan.io/apis
+  // It's recommended to store it in an env variable:
+  // .env.local for local testing, and in the Vercel/system env config for live apps.
+  etherscanApiKey: process.env.NEXT_PUBLIC_ETHERSCAN_API_KEY || "",
 
   // Only show the Burner Wallet when running on hardhat network
   onlyLocalBurnerWallet: true,

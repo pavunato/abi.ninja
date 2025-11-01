@@ -1,4 +1,5 @@
 import { NETWORKS_EXTRA_DATA, getTargetNetworks } from "./scaffold-eth";
+import scaffoldConfig from "~~/scaffold.config";
 
 export const fetchContractABIFromAnyABI = async (verifiedContractAddress: string, chainId: number) => {
   const chain = getTargetNetworks().find(network => network.id === chainId);
@@ -20,11 +21,10 @@ export const fetchContractABIFromAnyABI = async (verifiedContractAddress: string
 export const fetchContractABIFromEtherscan = async (verifiedContractAddress: string, chainId: number) => {
   const chain = NETWORKS_EXTRA_DATA[chainId];
 
-  if (!chain || (chain && !chain.etherscanApiKey) || !chain.etherscanEndpoint)
-    throw new Error(`ChainId ${chainId} not found in supported etherscan networks`);
+  if (!chain) throw new Error(`ChainId ${chainId} not found in supported networks`);
 
-  const apiKey = chain.etherscanApiKey;
-  const url = `${chain.etherscanEndpoint}/api?module=contract&action=getabi&address=${verifiedContractAddress}&apikey=${apiKey}`;
+  const apiKey = scaffoldConfig.etherscanApiKey;
+  const url = `https://api.etherscan.io/v2/api?chainid=${chainId}&module=contract&action=getabi&address=${verifiedContractAddress}&apikey=${apiKey}`;
 
   const response = await fetch(url);
   const data = await response.json();
