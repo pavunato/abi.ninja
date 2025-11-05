@@ -61,7 +61,20 @@ const IconOption = (props: OptionProps<Options>) => (
 export const NetworksDropdown = ({ onChange }: { onChange: (options: any) => any }) => {
   const [isMobile, setIsMobile] = useState(false);
   const defaultOption = groupedOptions["mainnet"].options[0] ?? Object.values(groupedOptions)[0]?.options[0];
-  const [selected, setSelected] = useState<Options | null>(defaultOption ?? null);
+  const [selected, setSelected] = useState<Options | null>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("selectedNetwork");
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          return networks.find(n => n.id === parsed.value) ? parsed : defaultOption;
+        } catch {
+          return defaultOption;
+        }
+      }
+    }
+    return defaultOption ?? null;
+  });
   const [showRpcModal, setShowRpcModal] = useState(false);
   const selectedChain = useMemo(() => networks.find(n => n.id === selected?.value), [selected?.value]);
   const defaultRpc = useMemo(() => selectedChain?.rpcUrls?.default?.http?.[0] ?? "", [selectedChain]);
@@ -89,6 +102,9 @@ export const NetworksDropdown = ({ onChange }: { onChange: (options: any) => any
         onChange={option => {
           setSelected(option as Options);
           onChange(option);
+          if (typeof window !== "undefined") {
+            localStorage.setItem("selectedNetwork", JSON.stringify(option));
+          }
         }}
         components={{ Option: IconOption }}
         isSearchable={!isMobile}
