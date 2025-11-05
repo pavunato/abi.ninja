@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { InheritanceTooltip } from "./InheritanceTooltip";
-import { Abi, AbiFunction } from "abitype";
+import { Abi, AbiFunction, AbiParameter } from "abitype";
 import { Address } from "viem";
 import { useContractRead } from "wagmi";
 import {
@@ -20,6 +20,44 @@ type ReadOnlyFunctionFormProps = {
   abiFunction: AbiFunction;
   inheritedFrom?: string;
   abi: Abi;
+};
+
+const formatTuple = (data: any[], components: readonly AbiParameter[]): Record<string, any> => {
+  const obj: Record<string, any> = {};
+  components.forEach((component, index) => {
+    let value = data[index];
+    if (component.type === "tuple" && "components" in component && component.components && Array.isArray(value)) {
+      value = formatTuple(value, component.components);
+    }
+    if (component.name) {
+      obj[component.name] = value;
+    } else {
+      obj[index] = value;
+    }
+  });
+  return obj;
+};
+
+const formatResult = (data: any, outputs: readonly AbiParameter[]): any => {
+  if (!outputs || outputs.length === 0) return data;
+
+  if (outputs.length === 1) {
+    const output = outputs[0];
+    if (output.type === "tuple" && "components" in output && output.components && Array.isArray(data)) {
+      return formatTuple(data, output.components);
+    }
+  } else if (Array.isArray(data)) {
+    // Multiple outputs, each might be a tuple
+    return data.map((item, index) => {
+      const output = outputs[index];
+      if (output && output.type === "tuple" && "components" in output && output.components && Array.isArray(item)) {
+        return formatTuple(item, output.components);
+      }
+      return item;
+    });
+  }
+
+  return data;
 };
 
 export const ReadOnlyFunctionForm = ({
@@ -42,6 +80,9 @@ export const ReadOnlyFunctionForm = ({
     onError: (error: any) => {
       const parsedErrror = getParsedError(error);
       notification.error(parsedErrror);
+    },
+    onSuccess: data => {
+      setResult(formatResult(data, abiFunction.outputs));
     },
   });
 
@@ -81,8 +122,7 @@ export const ReadOnlyFunctionForm = ({
         <button
           className="btn btn-secondary btn-sm"
           onClick={async () => {
-            const { data } = await refetch();
-            setResult(data);
+            refetch();
           }}
           disabled={isFetching}
         >
