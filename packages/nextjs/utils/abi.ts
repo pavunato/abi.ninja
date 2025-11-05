@@ -24,12 +24,14 @@ export const fetchContractABIFromEtherscan = async (verifiedContractAddress: str
   if (!chain) throw new Error(`ChainId ${chainId} not found in supported networks`);
 
   const apiKey = scaffoldConfig.etherscanApiKey;
-  const url = `https://api.etherscan.io/v2/api?chainid=${chainId}&module=contract&action=getabi&address=${verifiedContractAddress}&apikey=${apiKey}`;
+  const url = `https://api.etherscan.io/v2/api?chainid=${chainId}&module=contract&action=getsourcecode&address=${verifiedContractAddress}&apikey=${apiKey}`;
 
   const response = await fetch(url);
   const data = await response.json();
-  if (data.status === "1") {
-    return data.result;
+  if (data.status === "1" && data.result && data.result.length > 0) {
+    const contractData = data.result[0];
+    const abi = JSON.parse(contractData.ABI);
+    return { abi, contractName: contractData.ContractName };
   } else {
     console.error("Got non-1 status from Etherscan API", data);
     if (data.result) throw new Error(data.result);

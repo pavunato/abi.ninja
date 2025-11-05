@@ -32,11 +32,12 @@ export function clearContractName(network: string | number, address: string) {
   }
 }
 
-export function parseContractDataKey(key: string): { network: string; address: string } | null {
+export function parseContractDataKey(key: string): { type: string; network: string; address: string } | null {
   if (!key.startsWith("contractData_")) return null;
   const parts = key.split("_");
-  if (parts.length < 3) return null;
-  const network = parts[1];
-  const address = parts.slice(2).join("_");
-  return { network, address };
+  if (parts.length < 4) return null;
+  const type = parts[1];
+  const network = parts[2];
+  const address = parts.slice(3).join("_");
+  return { type, network, address };
 }

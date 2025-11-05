@@ -13,6 +13,7 @@ import { ContractUI } from "~~/components/scaffold-eth";
 import { useAbiNinjaState } from "~~/services/store/store";
 import { fetchContractABIFromAnyABI, fetchContractABIFromEtherscan } from "~~/utils/abi";
 import { detectProxyTarget } from "~~/utils/abi-ninja/proxyContracts";
+import { setContractName } from "~~/utils/recently";
 
 interface ParsedQueryContractDetailsPage extends ParsedUrlQuery {
   contractAddress: string;
@@ -126,10 +127,12 @@ const ContractDetailPage = ({ addressFromUrl, chainIdFromUrl }: ServerSideProps)
           console.error("Error fetching ABI from AnyABI: ", error);
           console.log("Trying to fetch ABI from Etherscan...");
           try {
-            const abiString = await fetchContractABIFromEtherscan(contractAddress, parsedNetworkId);
-            const parsedAbi = JSON.parse(abiString);
-            setContractData({ abi: parsedAbi, address: contractAddress });
+            const { abi, contractName } = await fetchContractABIFromEtherscan(contractAddress, parsedNetworkId);
+            setContractData({ abi, address: contractAddress });
             setError(null);
+            // Save to localStorage for recently contracts
+            localStorage.setItem(`contractData_verified_${parsedNetworkId}_${contractAddress}`, JSON.stringify(abi));
+            if (contractName) setContractName(parsedNetworkId, contractAddress, contractName);
           } catch (etherscanError: any) {
             console.error("Error fetching ABI from Etherscan: ", etherscanError);
             setError(etherscanError.message || "Error occurred while fetching ABI");
