@@ -6,7 +6,9 @@ import type { NextPage } from "next";
 import { Address, isAddress } from "viem";
 import { usePublicClient } from "wagmi";
 import {
+  ArrowRightIcon,
   BackspaceIcon,
+  ChevronDownIcon,
   ChevronLeftIcon,
   MagnifyingGlassIcon,
   PencilSquareIcon,
@@ -32,27 +34,15 @@ const tabValues = Object.values(TabName) as TabName[];
 
 const networks = getTargetNetworks();
 
-const getInitialNetwork = () => {
-  if (typeof window !== "undefined") {
-    const saved = localStorage.getItem("selectedNetwork");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        const networkExists = networks.find(n => n.id === parsed.value);
-        if (networkExists) {
-          return parsed.value.toString();
-        }
-      } catch {
-        // ignore
-      }
-    }
-  }
-  return networks[0].id.toString();
+const getNetworkName = (networkId: string) => {
+  const network = networks.find(n => n.id.toString() === networkId);
+  return network?.name || `Chain ${networkId}`;
 };
 
 const Home: NextPage = () => {
   const [activeTab, setActiveTab] = useState(TabName.verifiedContract);
-  const [network, setNetwork] = useState(getInitialNetwork());
+  const [network, setNetwork] = useState(networks[0].id.toString());
+  const [mounted, setMounted] = useState(false);
   const [verifiedContractAddress, setVerifiedContractAddress] = useState<Address>("");
   const [localAbiContractAddress, setLocalAbiContractAddress] = useState("");
   const [localContractAbi, setLocalContractAbi] = useState("");
@@ -61,6 +51,8 @@ const Home: NextPage = () => {
   const [recentlyCustom, setRecentlyCustom] = useState<string[]>([]);
   const [recentlyNames, setRecentlyNames] = useState<Record<string, string | null>>({});
   const [nameModalKey, setNameModalKey] = useState<string | null>(null);
+  const [expandedVerified, setExpandedVerified] = useState<Set<string>>(new Set());
+  const [expandedCustom, setExpandedCustom] = useState<Set<string>>(new Set());
 
   const publicClient = usePublicClient({
     chainId: parseInt(network),
@@ -93,6 +85,27 @@ const Home: NextPage = () => {
     }
     setRecentlyNames(names);
   }, []);
+
+  // Set mounted state to prevent hydration mismatches
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Update network from localStorage after mount to prevent hydration mismatch
+  useEffect(() => {
+    const saved = localStorage.getItem("selectedNetwork");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        const networkExists = networks.find(n => n.id === parsed.value);
+        if (networkExists) {
+          setNetwork(parsed.value.toString());
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }, []); // Empty dependency array - only run once after mount
 
   useEffect(() => {
     const fetchContractAbi = async () => {
@@ -170,13 +183,6 @@ const Home: NextPage = () => {
     }
   };
 
-  const addressSortenned = (address: string) => {
-    if (address) {
-      return `0x...${address.substring(address.length - 8)}`;
-    }
-    return "";
-  };
-
   const handleUserProvidedAbi = () => {
     if (!localContractAbi) {
       notification.error("Please provide an ABI.");
@@ -240,7 +246,9 @@ const Home: NextPage = () => {
                       <h2 className="mb-0 text-5xl font-bold">ABI Ninja</h2>
                       <p>Interact with any contract on Ethereum</p>
                       <div className="mt-4">
-                        <NetworksDropdown onChange={option => setNetwork(option ? option.value.toString() : "")} />
+                        {mounted && (
+                          <NetworksDropdown onChange={option => setNetwork(option ? option.value.toString() : "")} />
+                        )}
                       </div>
 
                       <div className="w-10/12 my-8">
@@ -343,136 +351,253 @@ const Home: NextPage = () => {
           <MiniFooter />
         </div>
 
-        {activeTab === TabName.verifiedContract && recentlyVerified.length > 0 && (
+        {activeTab === TabName.verifiedContract && (recentlyVerified.length > 0 || recentlyCustom.length > 0) && (
           <div className="flex h-screen relative overflow-x-hidden w-full flex-col items-center rounded-2xl bg-white py-4 lg:h-[650px] lg:w-[450px] lg:shadow-xl">
-            <div className="my-2 text-center font-semibold">Recently Verified Contracts</div>
-            <button
-              className="btn btn-ghost btn-sm h-10 min-h-10 absolute right-4 btn-primary"
-              onClick={() => {
-                recentlyVerified.forEach(key => {
-                  localStorage.removeItem(key);
-                  const parsed = parseContractDataKey(key);
-                  if (parsed) clearContractName(parsed.network, parsed.address);
-                });
-                setRecentlyVerified([]);
-                setRecentlyNames(prev => {
-                  const next = { ...prev };
-                  recentlyVerified.forEach(key => delete next[key]);
-                  return next;
-                });
-              }}
-            >
-              Clear all
-              <TrashIcon className="h-4 w-4" />
-            </button>
-            <div className="my-4 flex flex-col w-[80%]">
-              {recentlyVerified.map(contract => {
-                const parsed = parseContractDataKey(contract);
-                if (!parsed) return null;
-                const { network, address } = parsed;
-                return (
-                  <div className="flex justify-between items-center gap-2" key={contract}>
-                    <Link href={`/${address}/${network}`} passHref className="link text-purple-700 no-underline">
-                      {(recentlyNames[contract] || addressSortenned(address)) + ` (${network})`}
-                    </Link>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        title="Set name"
-                        className="btn btn-ghost btn-sm"
-                        onClick={() => setNameModalKey(contract)}
-                      >
-                        <PencilSquareIcon className="h-5 w-5" />
-                      </button>
-                      <button
-                        type="button"
-                        title="Remove"
-                        className="btn btn-ghost btn-sm"
-                        onClick={() => {
-                          localStorage.removeItem(contract);
-                          const parsed = parseContractDataKey(contract);
-                          if (parsed) clearContractName(parsed.network, parsed.address);
-                          setRecentlyVerified(prev => prev.filter(k => k !== contract));
-                          setRecentlyNames(prev => {
-                            const next = { ...prev };
-                            delete next[contract];
-                            return next;
-                          });
-                        }}
-                      >
-                        <BackspaceIcon className="h-5 w-5" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-        {activeTab === TabName.addressAbi && recentlyCustom.length > 0 && (
-          <div className="flex h-screen relative overflow-x-hidden w-full flex-col items-center rounded-2xl bg-white py-4 lg:h-[650px] lg:w-[450px] lg:shadow-xl">
-            <div className="my-2 text-center font-semibold">Recently Custom ABIs</div>
-            <button
-              className="btn btn-ghost btn-sm h-10 min-h-10 absolute right-4 btn-primary"
-              onClick={() => {
-                recentlyCustom.forEach(key => {
-                  localStorage.removeItem(key);
-                  const parsed = parseContractDataKey(key);
-                  if (parsed) clearContractName(parsed.network, parsed.address);
-                });
-                setRecentlyCustom([]);
-                setRecentlyNames(prev => {
-                  const next = { ...prev };
-                  recentlyCustom.forEach(key => delete next[key]);
-                  return next;
-                });
-              }}
-            >
-              Clear all
-              <TrashIcon className="h-4 w-4" />
-            </button>
-            <div className="my-4 flex flex-col w-[80%]">
-              {recentlyCustom.map(contract => {
-                const parsed = parseContractDataKey(contract);
-                if (!parsed) return null;
-                const { network, address } = parsed;
-                return (
-                  <div className="flex justify-between items-center gap-2" key={contract}>
-                    <Link href={`/${address}/${network}`} passHref className="link text-purple-700 no-underline">
-                      {(recentlyNames[contract] || addressSortenned(address)) + ` (${network})`}
-                    </Link>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        title="Set name"
-                        className="btn btn-ghost btn-sm"
-                        onClick={() => setNameModalKey(contract)}
-                      >
-                        <PencilSquareIcon className="h-5 w-5" />
-                      </button>
-                      <button
-                        type="button"
-                        title="Remove"
-                        className="btn btn-ghost btn-sm"
-                        onClick={() => {
-                          localStorage.removeItem(contract);
-                          const parsed = parseContractDataKey(contract);
-                          if (parsed) clearContractName(parsed.network, parsed.address);
-                          setRecentlyCustom(prev => prev.filter(k => k !== contract));
-                          setRecentlyNames(prev => {
-                            const next = { ...prev };
-                            delete next[contract];
-                            return next;
-                          });
-                        }}
-                      >
-                        <BackspaceIcon className="h-5 w-5" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <div className="my-2 text-center font-semibold">Recently Contracts</div>
+
+            {/* Recently Verified Contracts Section */}
+            {recentlyVerified.length > 0 && (
+              <div className="flex-1 flex flex-col w-full px-4 pb-4">
+                <div className="flex justify-between items-center mb-2">
+                  <div className="text-sm font-medium text-gray-700">Verified Contracts</div>
+                  <button
+                    className="btn btn-ghost btn-xs btn-primary"
+                    onClick={() => {
+                      recentlyVerified.forEach(key => {
+                        localStorage.removeItem(key);
+                        const parsed = parseContractDataKey(key);
+                        if (parsed) clearContractName(parsed.network, parsed.address);
+                      });
+                      setRecentlyVerified([]);
+                      setRecentlyNames(prev => {
+                        const next = { ...prev };
+                        recentlyVerified.forEach(key => delete next[key]);
+                        return next;
+                      });
+                    }}
+                  >
+                    Clear all
+                    <TrashIcon className="h-3 w-3" />
+                  </button>
+                </div>
+                <div className="flex flex-col flex-1 overflow-y-auto">
+                  {recentlyVerified.map(contract => {
+                    const parsed = parseContractDataKey(contract);
+                    if (!parsed) return null;
+                    const { network, address } = parsed;
+                    const isExpanded = expandedVerified.has(contract);
+                    const contractName = recentlyNames[contract] || "Unnamed Contract";
+
+                    return (
+                      <div className="border-b border-gray-200 pb-2 mb-2" key={contract}>
+                        <button
+                          className="flex items-center gap-2 text-left w-full hover:text-purple-800"
+                          onClick={() => {
+                            setExpandedVerified(prev => {
+                              const next = new Set(prev);
+                              if (next.has(contract)) {
+                                next.delete(contract);
+                              } else {
+                                next.add(contract);
+                              }
+                              return next;
+                            });
+                          }}
+                        >
+                          <ChevronDownIcon
+                            className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                          />
+                          <span className="font-medium text-sm">{contractName}</span>
+                        </button>
+                        {isExpanded && (
+                          <div className="mt-2 ml-6 text-xs text-gray-600 space-y-1">
+                            <div>
+                              <strong>Contract Name:</strong> {contractName}
+                            </div>
+                            <div>
+                              <strong>Address:</strong> {address}
+                            </div>
+                            <div>
+                              <strong>Chain ID:</strong> {network}
+                            </div>
+                            <div>
+                              <strong>Chain Name:</strong> {getNetworkName(network)}
+                            </div>
+                            <div className="flex items-center gap-2 pt-2 border-t border-gray-200 mt-2">
+                              <Link href={`/${address}/${network}`} passHref>
+                                <button
+                                  type="button"
+                                  title="Open contract"
+                                  className="btn btn-ghost btn-xs btn-primary"
+                                >
+                                  <ArrowRightIcon className="h-4 w-4" />
+                                  Open Contract
+                                </button>
+                              </Link>
+                              <button
+                                type="button"
+                                title="Set name"
+                                className="btn btn-ghost btn-xs"
+                                onClick={() => setNameModalKey(contract)}
+                              >
+                                <PencilSquareIcon className="h-4 w-4" />
+                                Rename
+                              </button>
+                              <button
+                                type="button"
+                                title="Remove"
+                                className="btn btn-ghost btn-xs btn-error"
+                                onClick={() => {
+                                  localStorage.removeItem(contract);
+                                  const parsed = parseContractDataKey(contract);
+                                  if (parsed) clearContractName(parsed.network, parsed.address);
+                                  setRecentlyVerified(prev => prev.filter(k => k !== contract));
+                                  setRecentlyNames(prev => {
+                                    const next = { ...prev };
+                                    delete next[contract];
+                                    return next;
+                                  });
+                                  setExpandedVerified(prev => {
+                                    const next = new Set(prev);
+                                    next.delete(contract);
+                                    return next;
+                                  });
+                                }}
+                              >
+                                <BackspaceIcon className="h-4 w-4" />
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Recently Custom ABIs Section */}
+            {recentlyCustom.length > 0 && (
+              <div className="flex-1 flex flex-col w-full px-4 pt-4 border-t border-gray-200">
+                <div className="flex justify-between items-center mb-2">
+                  <div className="text-sm font-medium text-gray-700">Custom ABIs</div>
+                  <button
+                    className="btn btn-ghost btn-xs btn-primary"
+                    onClick={() => {
+                      recentlyCustom.forEach(key => {
+                        localStorage.removeItem(key);
+                        const parsed = parseContractDataKey(key);
+                        if (parsed) clearContractName(parsed.network, parsed.address);
+                      });
+                      setRecentlyCustom([]);
+                      setRecentlyNames(prev => {
+                        const next = { ...prev };
+                        recentlyCustom.forEach(key => delete next[key]);
+                        return next;
+                      });
+                    }}
+                  >
+                    Clear all
+                    <TrashIcon className="h-3 w-3" />
+                  </button>
+                </div>
+                <div className="flex flex-col flex-1 overflow-y-auto">
+                  {recentlyCustom.map(contract => {
+                    const parsed = parseContractDataKey(contract);
+                    if (!parsed) return null;
+                    const { network, address } = parsed;
+                    const isExpanded = expandedCustom.has(contract);
+                    const contractName = recentlyNames[contract] || "Unnamed Contract";
+
+                    return (
+                      <div className="border-b border-gray-200 pb-2 mb-2" key={contract}>
+                        <button
+                          className="flex items-center gap-2 text-left w-full hover:text-purple-800"
+                          onClick={() => {
+                            setExpandedCustom(prev => {
+                              const next = new Set(prev);
+                              if (next.has(contract)) {
+                                next.delete(contract);
+                              } else {
+                                next.add(contract);
+                              }
+                              return next;
+                            });
+                          }}
+                        >
+                          <ChevronDownIcon
+                            className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                          />
+                          <span className="font-medium text-sm">{contractName}</span>
+                        </button>
+                        {isExpanded && (
+                          <div className="mt-2 ml-6 text-xs text-gray-600 space-y-1">
+                            <div>
+                              <strong>Contract Name:</strong> {contractName}
+                            </div>
+                            <div>
+                              <strong>Address:</strong> {address}
+                            </div>
+                            <div>
+                              <strong>Chain ID:</strong> {network}
+                            </div>
+                            <div>
+                              <strong>Chain Name:</strong> {getNetworkName(network)}
+                            </div>
+                            <div className="flex items-center gap-2 pt-2 border-t border-gray-200 mt-2">
+                              <Link href={`/${address}/${network}`} passHref>
+                                <button
+                                  type="button"
+                                  title="Open contract"
+                                  className="btn btn-ghost btn-xs btn-primary"
+                                >
+                                  <ArrowRightIcon className="h-4 w-4" />
+                                  Open Contract
+                                </button>
+                              </Link>
+                              <button
+                                type="button"
+                                title="Set name"
+                                className="btn btn-ghost btn-xs"
+                                onClick={() => setNameModalKey(contract)}
+                              >
+                                <PencilSquareIcon className="h-4 w-4" />
+                                Rename
+                              </button>
+                              <button
+                                type="button"
+                                title="Remove"
+                                className="btn btn-ghost btn-xs btn-error"
+                                onClick={() => {
+                                  localStorage.removeItem(contract);
+                                  const parsed = parseContractDataKey(contract);
+                                  if (parsed) clearContractName(parsed.network, parsed.address);
+                                  setRecentlyCustom(prev => prev.filter(k => k !== contract));
+                                  setRecentlyNames(prev => {
+                                    const next = { ...prev };
+                                    delete next[contract];
+                                    return next;
+                                  });
+                                  setExpandedCustom(prev => {
+                                    const next = new Set(prev);
+                                    next.delete(contract);
+                                    return next;
+                                  });
+                                }}
+                              >
+                                <BackspaceIcon className="h-4 w-4" />
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
         {nameModalKey &&

@@ -102,8 +102,10 @@ const ContractDetailPage = ({ addressFromUrl, chainIdFromUrl }: ServerSideProps)
           return;
         }
 
-        const localStorageAbiStr =
-          localStorage.getItem(`contractData_${parsedNetworkId}_${contractAddress}`) || undefined;
+        // Check for stored custom ABI first, then verified ABI
+        const customAbiStr = localStorage.getItem(`contractData_custom_${parsedNetworkId}_${contractAddress}`);
+        const verifiedAbiStr = localStorage.getItem(`contractData_verified_${parsedNetworkId}_${contractAddress}`);
+        const localStorageAbiStr = customAbiStr || verifiedAbiStr || undefined;
         const localStorageAbi = localStorageAbiStr ? JSON.parse(localStorageAbiStr) : null;
 
         if (localStorageAbi) {
