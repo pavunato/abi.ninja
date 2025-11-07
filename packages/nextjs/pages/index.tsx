@@ -32,9 +32,27 @@ const tabValues = Object.values(TabName) as TabName[];
 
 const networks = getTargetNetworks();
 
+const getInitialNetwork = () => {
+  if (typeof window !== "undefined") {
+    const saved = localStorage.getItem("selectedNetwork");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        const networkExists = networks.find(n => n.id === parsed.value);
+        if (networkExists) {
+          return parsed.value.toString();
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
+  return networks[0].id.toString();
+};
+
 const Home: NextPage = () => {
   const [activeTab, setActiveTab] = useState(TabName.verifiedContract);
-  const [network, setNetwork] = useState(networks[0].id.toString());
+  const [network, setNetwork] = useState(getInitialNetwork());
   const [verifiedContractAddress, setVerifiedContractAddress] = useState<Address>("");
   const [localAbiContractAddress, setLocalAbiContractAddress] = useState("");
   const [localContractAbi, setLocalContractAbi] = useState("");
@@ -79,8 +97,9 @@ const Home: NextPage = () => {
   useEffect(() => {
     const fetchContractAbi = async () => {
       setIsFetchingAbi(true);
+      let implementationAddress: string | null = null;
       try {
-        const implementationAddress = await detectProxyTarget(verifiedContractAddress, publicClient);
+        implementationAddress = await detectProxyTarget(verifiedContractAddress, publicClient);
 
         if (implementationAddress) {
           setImplementationAddress(implementationAddress);
@@ -96,12 +115,16 @@ const Home: NextPage = () => {
         console.error("Error fetching ABI from AnyABI: ", error);
         console.log("Trying to fetch ABI from Etherscan...");
         try {
-          const { abi, contractName } = await fetchContractABIFromEtherscan(verifiedContractAddress, parseInt(network));
+          const { abi, contractName } = await fetchContractABIFromEtherscan(
+            implementationAddress || verifiedContractAddress,
+            parseInt(network),
+          );
           setContractAbi(abi);
           setIsAbiAvailable(true);
           // Save to localStorage for recently contracts
           localStorage.setItem(`contractData_verified_${network}_${verifiedContractAddress}`, JSON.stringify(abi));
-          if (contractName) setContractName(network, verifiedContractAddress, contractName);
+          if (contractName && !getContractName(network, verifiedContractAddress))
+            setContractName(network, verifiedContractAddress, contractName);
         } catch (etherscanError: any) {
           setIsAbiAvailable(false);
           console.error("Error fetching ABI from Etherscan: ", etherscanError);
