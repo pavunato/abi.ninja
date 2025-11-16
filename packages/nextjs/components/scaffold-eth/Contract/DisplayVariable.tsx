@@ -60,13 +60,13 @@ export const DisplayVariable = ({
       </div>
       <div className="text-gray-500 text-sm flex flex-col items-start">
         <div>
-          <div
+          <pre
             className={`break-all block transition bg-transparent ${
               showAnimation ? "bg-warning rounded-sm animate-pulse-fast" : ""
             }`}
           >
-            {displayTxResult(result)}
-          </div>
+            {displayTxResult(result, false, abiFunction.outputs)}
+          </pre>
         </div>
       </div>
     </div>
